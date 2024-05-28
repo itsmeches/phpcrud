@@ -1,428 +1,133 @@
 <?php
 require_once('classes/database.php');
-$con = new database();
-$error = "";
-if (isset($_POST['multisave'])) {
-    
-    // Getting the account information
-    $username = $_POST['username'];
-    $email = $_POST['email'];
-    $password = password_hash($_POST['password'], PASSWORD_BCRYPT);
-    
-    // Getting the personal information
-    $firstname = $_POST['firstname'];
-    $lastname = $_POST['lastname'];
-    $birthday = $_POST['birthday'];
-    $sex = $_POST['sex'];
-  
-    // Getting the address information
-    $street = $_POST['user_street'];
-    $barangay = $_POST['barangay_text'];
-    $city = $_POST['city_text'];
-    $province = $_POST['region_text'];
-
-    // Handle file upload
-    $target_dir = "uploads/";
-    $original_file_name = basename($_FILES["profile_picture"]["name"]);
-    
-    // NEW CODE: Initialize $new_file_name with $original_file_name
-     $new_file_name = $original_file_name; 
-    
-     $target_file = $target_dir . $original_file_name;
-     $imageFileType = strtolower(pathinfo($target_file, PATHINFO_EXTENSION));
-     $uploadOk = 1;
-    
-  // Check if file already exists and rename if necessary
-  // Check if file already exists and rename if necessary
-  if (file_exists($target_file)) {
-    // Generate a unique file name by appending a timestamp
-    $new_file_name = pathinfo($original_file_name, PATHINFO_FILENAME) . '_' . time() . '.' . $imageFileType;
-    $target_file = $target_dir . $new_file_name;
-  } else {
-    // Update $target_file with the original file name
-    $target_file = $target_dir . $original_file_name;
-}
-
-    // Check if file is an actual image or fake image
-    $check = getimagesize($_FILES["profile_picture"]["tmp_name"]);
-    if ($check === false) {
-        echo "File is not an image.";
-        $uploadOk = 0;
-    }
-
-    // Check file size
-    if ($_FILES["profile_picture"]["size"] > 500000) {
-        echo "Sorry, your file is too large.";
-        $uploadOk = 0;
-    }
-
-    // Allow certain file formats
-    if ($imageFileType != "jpg" && $imageFileType != "png" && $imageFileType != "jpeg" && $imageFileType != "gif") {
-        echo "Sorry, only JPG, JPEG, PNG & GIF files are allowed.";
-        $uploadOk = 0;
-    }
-
-    // Check if $uploadOk is set to 0 by an error
-    if ($uploadOk == 0) {
-        echo "Sorry, your file was not uploaded.";
-    } else {
-        if (move_uploaded_file($_FILES["profile_picture"]["tmp_name"], $target_file)) {
-            echo "The file " . htmlspecialchars($new_file_name) . " has been uploaded.";
-
-            // Save the user data and the path to the profile picture in the database
-            $profile_picture_path = 'uploads/'.$new_file_name; // Save the new file name (without directory)
-            
-            $userID = $con->signupUser($firstname, $lastname, $birthday, $sex, $email, $username, $password, $profile_picture_path);
-
-            if ($userID) {
-                // Signup successful, insert address into users_address table
-                if ($con->insertAddress($userID, $street, $barangay, $city, $province)) {
-                    // Address insertion successful, redirect to login page
-                    header('location:index.php');
-                    exit; // Stop further execution
-                } else {
-                    // Address insertion failed, display error message
-                    $error = "Error occurred while signing up. Please try again.";
-                }
-            } else {
-                // Signup failed, display error message
-                echo "Sorry, there was an error signing up.";
-            }
-        } else {
-            // File upload failed, display error message
-            echo "Sorry, there was an error uploading your file.";
-        }
+$con = new database ();
+session_start();
+if (isset($_POST['delete'])) {
+    $id = $_POST['id'];
+    if ($con->delete($id)) {
+        header('location:index.php?status=success');
+    }else{
+        echo "Something went wrong.";
     }
 }
 ?>
 
-
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- Required meta tags -->
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <!-- Bootstrap CSS -->
-  <link rel="stylesheet" href="./bootstrap-4.5.3-dist/css/bootstrap.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome!</title>
   <link rel="stylesheet" href="./bootstrap-5.3.3-dist/css/bootstrap.css">
-  <!-- JQuery for Address Selector -->
-  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-  <title>Form with MultiStep and Address Selector</title>
-  <style>
-    .form-step {
-      display: none;
-    }
-    .form-step-active {
-      display: block;
-    }
-  </style>
+  <!-- Bootstrap CSS -->
+  <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+  <!-- For Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+<link rel="stylesheet" href="./includes/style.css">
+<link rel="stylesheet" href="package/dist/sweetalert2.css">
 </head>
 <body>
-<?php include('includes/navbar.php'); ?>
-<div class="container custom-container rounded-3 shadow my-5 p-3 px-5">
-  <h3 class="text-center mt-4">Registration Form</h3>
-  <form id="registration-form" method="post" action="" enctype="multipart/form-data" novalidate>
-    <!-- Step 1 -->
-    <div class="form-step form-step-active" id="step-1">
-      <div class="card mt-4">
-        <div class="card-header bg-info text-white">Account Information</div>
-        <div class="card-body">
-        <div class="form-group">
-            <label for="username">Username:</label>
-            <input type="text" class="form-control" name="username" id="username" placeholder="Enter username" required>
-            <div class="valid-feedback">Looks good!</div>
-            <div class="invalid-feedback">Please enter a valid username.</div>
-            <div id="usernameFeedback" class="invalid-feedback"></div> <!-- New feedback div -->
-        </div>
-          <div class="form-group">
-            <label for="email">Email:</label>
-            <input type="email" class="form-control" name="email" placeholder="Enter email" required>
-            <div class="valid-feedback">Looks good!</div>
-            <div class="invalid-feedback">Please enter a valid email.</div>
-          </div>
-          <div class="form-group">
-            <label for="password">Password:</label>
-            <input type="password" class="form-control" name="password" placeholder="Enter password" required>
-            <div class="valid-feedback">Looks good!</div>
-            <div class="invalid-feedback">Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, and one special character.</div>
-          </div>
+    <?php include('includes/navbar.php'); ?>
 
-          <div class="form-group">
-            <label for="confirmPassword">Confirm Password:</label>
-            <input type="password" class="form-control" name="confirmPassword" placeholder="Re-enter your password" required>
-            <div class="valid-feedback">Looks good!</div>
-            <div class="invalid-feedback">Please confirm your password.</div>
-          </div>
-        </div>
-      </div>
-      <button type="button" id="nextButton" class="btn btn-primary mt-3" onclick="nextStep()">Next</button>
-    </div>
-<!-- Step 2 -->
-    <div class="form-step" id="step-2">
-          <!-- Step 2: Personal Information -->
-          <div class="card mt-4">
-            <div class="card-header bg-info text-white">Personal Information</div>
-            <div class="card-body">
-              <div class="form-row">
-                <div class="form-group col-md-6 col-sm-12">
-                  <label for="firstName">First Name:</label>
-                  <input type="text" class="form-control" name="firstname" placeholder="Enter first name" required>
-                  <div class="valid-feedback">Looks good!</div>
-                  <div class="invalid-feedback">Please enter a valid first name.</div>
-                </div>
-                <div class="form-group col-md-6 col-sm-12">
-                  <label for="lastName">Last Name:</label>
-                  <input type="text" class="form-control" name="lastname" placeholder="Enter last name" required>
-                  <div class="valid-feedback">Looks good!</div>
-                  <div class="invalid-feedback">Please enter a valid last name.</div>
-                </div>
-              </div>
-
-              <div class="form-row">
-                <div class="form-group col-md-6">
-                  <label for="birthday">Birthday:</label>
-                  <input type="date" class="form-control" name="birthday" id="birthday" required>
-                  <div class="valid-feedback">Great!</div>
-                  <div class="invalid-feedback">Please enter a valid birthday.</div>
-                </div>
-                <div class="form-group col-md-6">
-                  <label for="sex">Sex:</label>
-                  <select class="form-control" name="sex" required>
-                    <option selected disabled value="">Select Sex</option>
-                    <option>Male</option>
-                    <option>Female</option>
-                  </select>
-                  <div class="valid-feedback">Looks good.</div>
-                  <div class="invalid-feedback">Please select a sex.</div>
-                </div>
-              </div>
-
-              <div class="form-group">
-                <label for="profilePicture">Profile Picture:</label>
-                <input type="file" class="form-control" name="profile_picture" accept="image/*" required>
-                <div class="valid-feedback">Looks good!</div>
-                <div class="invalid-feedback">Please upload a profile picture.</div>
-            </div>
-      <button type="button" class="btn btn-secondary mt-3" onclick="prevStep()">Previous</button>
-      <button type="button" class="btn btn-primary mt-3" onclick="nextStep()">Next</button>
-    </div>
-    </div>
-    </div>
-
-
-    <!-- Step 3 -->
-    <div class="form-step" id="step-3">
-      <div class="card mt-4">
-        <div class="card-header bg-info text-white">Address Information</div>
-        <div class="card-body">
-          <div class="form-group">
-            <label class="form-label">Region<span class="text-danger"> *</span></label>
-            <select name="user_region" class="form-control form-control-md" id="region"></select>
-            <input type="hidden" class="form-control form-control-md" name="region_text" id="region-text">
-            <div class="valid-feedback">Looks good!</div>
-            <div class="invalid-feedback">Please select a region.</div>
-          </div>
-          <div class="form-row">
-            <div class="form-group col-md-6">
-              <label class="form-label">Province<span class="text-danger"> *</span></label>
-              <select name="user_province" class="form-control form-control-md" id="province"></select>
-              <input type="hidden" class="form-control form-control-md" name="province_text" id="province-text" required>
-              <div class="valid-feedback">Looks good!</div>
-              <div class="invalid-feedback">Please select your province.</div>
-            </div>
-            <div class="form-group col-md-6">
-              <label class="form-label">City / Municipality<span class="text-danger"> *</span></label>
-              <select name="user_city" class="form-control form-control-md" id="city"></select>
-              <input type="hidden" class="form-control form-control-md" name="city_text" id="city-text" required>
-              <div class="valid-feedback">Looks good!</div>
-              <div class="invalid-feedback">Please select your city/municipality.</div>
-            </div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Barangay<span class="text-danger"> *</span></label>
-            <select name="user_barangay" class="form-control form-control-md" id="barangay"></select>
-            <input type="hidden" class="form-control form-control-md" name="barangay_text" id="barangay-text" required>
-            <div class="valid-feedback">Looks good!</div>
-            <div class="invalid-feedback">Please select your barangay.</div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Street <span class="text-danger"> *</span></label>
-            <input type="text" class="form-control form-control-md" name="user_street" id="street-text" required>
-            <div class="valid-feedback">Looks good!</div>
-            <div class="invalid-feedback">Please select your street.</div>
-          </div>
-        </div>
-      </div>
-      <button type="button" class="btn btn-secondary mt-3" onclick="prevStep()">Previous</button>
-      <button type="submit" name="multisave" class="btn btn-primary mt-3">Sign Up</button>
-      <a class="btn btn-outline-danger mt-3" href="index.php">Go Back</a>
-    </div>
-  </form>
+<div class="container user-info rounded shadow p-3 my-2">
+<h2 class="text-center mb-2">User Table</h2>
+  <div class="table-responsive text-center">
+    <table class="table table-bordered">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Picture</th>
+          <th>First Name</th>
+          <th>Last Name</th>
+          <th>Birthday</th>
+          <th>Sex</th>
+          <th>Username</th>
+          <th>Address</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php
+        $counter = 1;
+        $data = $con->view();
+               foreach($data as $row){?>
+               
+        <tr>
+          <td><?php echo $counter++ ?></td>
+          <td>
+        <?php if (!empty($row['user_profile_picture'])): ?>
+          <img src="<?php echo htmlspecialchars($row['user_profile_picture']); ?>" alt="Profile Picture" style="width: 50px; height: 50px; border-radius: 50%;">
+        <?php else: ?>
+          <img src="path/to/default/profile/pic.jpg" alt="Default Profile Picture" style="width: 50px; height: 50px; border-radius: 50%;">
+        <?php endif; ?>
+      </td>
+          <td><?php echo $row['user_firstname'];?></td>
+          <td><?php echo $row['user_lastname'];?></td>
+          <td><?php echo $row['user_birthday'];?></td>
+          <td><?php echo $row['user_sex'];?></td>
+          <td><?php echo $row['user_name'];?></td>
+          <td><?php echo $row['address'];?></td>
+          <td>
+          <a href="#" class="btn btn-primary btn-sm">Edit</a>
+        <!-- Delete button -->
+        <form method="POST" style="display: inline;">
+            <input type="hidden" name="id" value ="<?php echo $row['user_id'];?>">
+            <button type="submit" name="delete" value="delete" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this user?')">
+            <i class="fas fa-trash-alt"></i>
+        </button>
+        </form>
+          </td>
+        </tr>
+        <?php } ?>
+        <!-- Add more rows for additional users -->
+      </tbody>
+    </table>
+  </div>
+</div>
 </div>
 
+<!-- Bootstrap JS and dependencies -->
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 <script src="./bootstrap-5.3.3-dist/js/bootstrap.js"></script>
-<!-- Script for Address Selector -->
-<script src="ph-address-selector.js"></script>
-<script>
-$(document).ready(function(){
-    $('#username').on('input', function(){
-        var username = $(this).val();
-        if(username.length > 0) {
-            $.ajax({
-                url: 'check_username.php',
-                method: 'POST',
-                data: {username: username},
-                dataType: 'json',
-                success: function(response) {
-                    if(response.exists) {
-                        $('#username').removeClass('is-valid').addClass('is-invalid');
-                        $('#usernameFeedback').text('Username is already taken.');
-                        $('#nextButton').prop('disabled', true); // Disable the Next button
-                    } else {
-                        $('#username').removeClass('is-invalid').addClass('is-valid');
-                        $('#usernameFeedback').text('');
-                        $('#nextButton').prop('disabled', false); // Enable the Next button
-                    }
-                }
-            });
-        } else {
-            $('#username').removeClass('is-valid is-invalid');
-            $('#usernameFeedback').text('');
-            $('#nextButton').prop('disabled', false); // Enable the Next button if username is empty
-        }
-    });
-});
+<!-- Bootsrap JS na nagpapagana ng danger alert natin -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 
-</script>
-
-<!-- Script for Form Validation -->
-<script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const form = document.querySelector("form");
-      const birthdayInput = document.getElementById("birthday");
-      const steps = document.querySelectorAll(".form-step");
-      let currentStep = 0;
-
-
-  
-      // Set the max attribute of the birthday input to today's date
-      const today = new Date().toISOString().split('T')[0];    
-      birthdayInput.setAttribute('max', today);
-
-      // Add event listeners for real-time validation
-      const inputs = form.querySelectorAll("input, select");
-      inputs.forEach(input => {
-        input.addEventListener("input", () => validateInput(input));
-        input.addEventListener("change", () => validateInput(input));
-      });
-
-      //MultiStep Logic 
-  // Add an event listener to the form's submit event
-  form.addEventListener("submit", (event) => {
-  // Prevent form submission if the current step is not valid
-  if (!validateStep(currentStep)) {
-    event.preventDefault();
-    event.stopPropagation();
-  }
-
-  // Add the 'was-validated' class to the form for Bootstrap styling
-  form.classList.add("was-validated");
-}, false);
-
-// Function to move to the next step
-window.nextStep = () => {
-  // Only proceed to the next step if the current step is valid
-  if (validateStep(currentStep)) {
-    steps[currentStep].classList.remove("form-step-active"); // Hide the current step
-    currentStep++; // Increment the current step index
-    steps[currentStep].classList.add("form-step-active"); // Show the next step
-  }
-};
-
-// Function to move to the previous step
-window.prevStep = () => {
-  steps[currentStep].classList.remove("form-step-active"); // Hide the current step
-  currentStep--; // Decrement the current step index
-  steps[currentStep].classList.add("form-step-active"); // Show the previous step
-};
-
-// Function to validate all inputs in the current step
-function validateStep(step) {
-  let valid = true;
-  // Select all input and select elements in the current step
-  const stepInputs = steps[step].querySelectorAll("input, select");
-
-  // Validate each input element
-  stepInputs.forEach(input => {
-    if (!validateInput(input)) {
-      valid = false; // If any input is invalid, set valid to false
+<script src="package/dist/sweetalert2.js"></script>
+<!-- Pop Up Messages after a succesful transaction starts here --> <script>
+document.addEventListener('DOMContentLoaded', function() {
+  const params = new URLSearchParams(window.location.search);
+  const status = params.get('status');
+  if (status) {
+    let title, text, icon;
+    switch (status) {
+      case 'success':
+        title = 'Success!';
+        text = 'Record is successfully deleted.';
+        icon = 'success';
+        break;
+      case 'error':
+        title = 'Error!';
+        text = 'Something went wrong.';
+        icon = 'error';
+        break;
+      default:
+        return;
     }
-  });
-
-  return valid; // Return the overall validity of the step
-}
-
-  
-      function validateInput(input) {
-        if (input.name === 'password') {
-          return validatePassword(input);
-        } else if (input.name === 'confirmPassword') {
-          return validateConfirmPassword(input);
-        } else {
-          if (input.checkValidity()) {
-            input.classList.remove("is-invalid");
-            input.classList.add("is-valid");
-            return true;
-          } else {
-            input.classList.remove("is-valid");
-            input.classList.add("is-invalid");
-            return false;
-          }
-        }
-      }
-  
-      function validatePassword(passwordInput) {
-        const password = passwordInput.value;
-        const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/; mke explanation
-        if (regex.test(password)) {
-          passwordInput.classList.remove("is-invalid");
-          passwordInput.classList.add("is-valid");
-          return true;
-        } else {
-          passwordInput.classList.remove("is-valid");
-          passwordInput.classList.add("is-invalid");
-          return false;
-        }
-      }
-  
-      function validateConfirmPassword(confirmPasswordInput) {
-        const passwordInput = form.querySelector("input[name='password']");
-        const password = passwordInput.value;
-        const confirmPassword = confirmPasswordInput.value;
-      
-        if (password === confirmPassword && password !== '') {
-          confirmPasswordInput.classList.remove("is-invalid");
-          confirmPasswordInput.classList.add("is-valid");
-          return true;
-        } else {
-          confirmPasswordInput.classList.remove("is-valid");
-          confirmPasswordInput.classList.add("is-invalid");
-          return false;
-        }
-      }
-
-       document.addEventListener("keydown", (event) => {
-        if (event.key === 'Enter') {
-            event.preventDefault(); // Prevent form submission
-        }
+    Swal.fire({
+      title: title,
+      text: text,
+      icon: icon
+    }).then(() => {
+      // Remove the status parameter from the URL
+      const newUrl = window.location.origin + window.location.pathname;
+      window.history.replaceState(null, null, newUrl);
     });
+  }
+});
+</script> <!-- Pop Up Messages after a succesful transaction ends here -->
 
 
-      
-    
-});</script>
-  
-  </body>
-  </html>
-  
+</body>
+</html>
