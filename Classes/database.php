@@ -68,7 +68,7 @@ class database{
         try{
             $con = $this->opencon();
             $con -> beginTransaction();
-            $query = $con->prepare("UPDATE users SET street=?, barangay=?, city=?, province=? WHERE user_id=?");
+            $query = $con->prepare("UPDATE user_address SET street=?, barangay=?, city=?, province=? WHERE user_id=?");
             $query->execute([ $street, $barangay, $city, $province, $user_id,]);
             $con->commit();
             return true;

@@ -31,7 +31,7 @@ if (isset($_POST['id'])){
     
 if (isset($_POST['update'])) {
   if  ($con->updateUser($user_id, $firstname, $lastname, $birthday, $sex)) {
-    header('location:index.php?status=success1');
+
     if ($con->updateUserAddress($user_id, $street, $barangay, $city, $province)) {
     header('location:index.php?status=success1');
     exit();
