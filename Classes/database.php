@@ -36,6 +36,75 @@ class database{
     }
 
 
+    function viewdata($id){
+        try{                             
+          $con =$this->opencon();
+          $query =$con->prepare("SELECT
+          users.user_id,
+          users.user_firstname,
+          users.user_lastname,
+          users.user_birthday,
+          users.user_sex,
+          users.user_name,
+          users.user_profile_picture,
+          user_address.street,
+          user_address.barangay,
+          user_address.city,
+          user_address.province
+      FROM
+          users
+      INNER JOIN user_address ON users.user_id = user_address.user_id where users.user_id=?");
+          $query->execute(array($id));
+          return $query->fetch();
+        }
+        catch (PDOException $e) { 
+          return[];
+        }
+      }
+
+
+
+      function updateuserAddress($user_id, $street, $barangay, $city, $province){
+        try{
+            $con = $this->opencon();
+            $con -> beginTransaction();
+            $query = $con->prepare("UPDATE users SET street=?, barangay=?, city=?, province=? WHERE user_id=?");
+            $query->execute([ $street, $barangay, $city, $province, $user_id,]);
+            $con->commit();
+            return true;
+        } catch (PDOException$e){
+            $con->rollback();
+            return false;
+        }
+
+        
+      }
+
+
+
+
+      function updateUser($user_id, $firstname, $lastname, $birthday, $sex){
+        try{
+            $con = $this->opencon();
+            $con -> beginTransaction();
+            $query = $con->prepare("UPDATE users SET user_firstname=?, user_lastname=?, user_birthday=?, user_sex=? WHERE user_id=?");
+            $query->execute([ $firstname, $lastname, $birthday, $sex, $user_id]);
+            $con->commit();
+            return true;
+        } catch (PDOException$e){
+            $con->rollback();
+            return false;
+        }
+
+        
+      }
+
+
+
+      
+      
+
+
     function signupUser($firstname, $lastname, $birthday, $sex, $email, $username, $password, $profilePicture)
     {
         $con = $this->opencon();
