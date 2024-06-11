@@ -1,7 +1,15 @@
 <?php
 require_once('classes/database.php');
 $con = new database ();
+
+// if the user is already logged in, check their account type and redirect accordingly
+
 session_start();
+if(!isset($_SESSION['username']) || $_SESSION['account_type'] !=0){
+  header('location:login.php');
+  exit();
+}
+
 if (isset($_POST['delete'])) {
     $id = $_POST['id'];
     if ($con->delete($id)) {
@@ -39,6 +47,7 @@ if (isset($_POST['delete'])) {
           <th>Picture</th>
           <th>First Name</th>
           <th>Last Name</th>
+          <th>Email</th>
           <th>Birthday</th>
           <th>Sex</th>
           <th>Username</th>
@@ -63,6 +72,7 @@ if (isset($_POST['delete'])) {
       </td>
           <td><?php echo $row['user_firstname'];?></td>
           <td><?php echo $row['user_lastname'];?></td>
+          <td><?php echo $row['user_email'];?></td>
           <td><?php echo $row['user_birthday'];?></td>
           <td><?php echo $row['user_sex'];?></td>
           <td><?php echo $row['user_name'];?></td>
@@ -121,6 +131,17 @@ document.addEventListener('DOMContentLoaded', function() {
         case 'success1':
         title = 'Success!';
         text = 'Record is successfully updated.';
+        icon = 'success';
+        break;
+        case 'login':
+        title = 'Success!';
+        text = 'You are in';
+        icon = 'success';
+        break;
+
+        case 'Password':
+        title = 'SuccessP';
+        text = 'You are in';
         icon = 'success';
         break;
     

@@ -20,7 +20,6 @@ if (isset($_POST['id'])){
     $lastname = $_POST['lastname'];
     $birthday = $_POST['birthday'];
     $sex = $_POST['sex'];
-
     $street = $_POST['street'];
     $barangay = $_POST['barangay'];
     $city = $_POST['city'];
